@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>RouteIQ — Gig Worker Route Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Unbounded:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f2f5;
+  --white:#ffffff;
+  --ink:#0d0f14;
+  --surface:#f8f9fc;
+  --border:#e2e6ef;
+  --muted:#8892a4;
+  --green:#00c853;
+  --green2:#00e676;
+  --blue:#2979ff;
+  --blue2:#448aff;
+  --purple:#7c4dff;
+  --orange:#ff6d00;
+  --red:#ff1744;
+  --yellow:#ffd600;
+  --card:#ffffff;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:'Space Grotesk',sans-serif;
+  min-height:100vh;overflow-x:hidden;
+  padding-bottom:80px;
+}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--blue);border-radius:2px}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--ink);
+  padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-icon{
+  width:32px;height:32px;background:var(--green);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:'Unbounded',sans-serif;font-weight:900;font-size:14px;color:var(--ink);
+}
+.brand-name{font-family:'Unbounded',sans-serif;font-weight:700;font-size:16px;color:#fff;letter-spacing:-0.02em}
+.brand-name span{color:var(--green)}
+.earn-chip{
+  background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.3);
+  color:var(--green2);font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:4px 10px;border-radius:20px;
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--white);border-top:1px solid var(--border);
+  display:flex;
+  padding:8px 0 12px;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.08);
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 4px;cursor:pointer;border:none;background:none;
+  font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:500;
+  color:var(--muted);transition:all 0.2s;letter-spacing:0.02em;
+}
+.nav-btn.active{color:var(--blue)}
+.nav-btn svg{width:20px;height:20px}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--blue);margin-top:2px;display:none}
+.nav-btn.active .nav-dot{display:block}
+
+/* ── PAGES ── */
+.page{display:none;padding:16px;animation:pgIn 0.2s ease}
+.page.active{display:block}
+@keyframes pgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── CARDS ── */
+.card{
+  background:var(--white);border-radius:16px;
+  padding:16px;margin-bottom:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+}
+.card-title{
+  font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;
+  margin-bottom:4px;letter-spacing:-0.01em;
+}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:14px;font-weight:400}
+
+/* ── FORMS ── */
+.fg{margin-bottom:12px}
+.fl{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.fi,.fs{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);
+  border-radius:10px;padding:10px 12px;color:var(--ink);
+  font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:500;
+  outline:none;transition:border-color 0.2s;
+}
+.fi:focus,.fs:focus{border-color:var(--blue)}
+.fs option{background:var(--white)}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px 20px;border-radius:12px;
+  font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;
+  cursor:pointer;border:none;transition:all 0.18s;letter-spacing:0.01em;
+}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue2);transform:translateY(-1px)}
+.btn-green{background:var(--green);color:var(--ink)}
+.btn-green:hover{background:var(--green2)}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--ink)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-red{background:rgba(255,23,68,0.1);color:var(--red);border:1px solid rgba(255,23,68,0.2)}
+.btn-full{width:100%}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none!important}
+
+/* ── MODE PILLS ── */
+.mode-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.mode-pill{
+  flex:1;min-width:70px;padding:10px 8px;border-radius:10px;text-align:center;
+  font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--muted);transition:all 0.18s;
+}
+.mode-pill.active{border-color:var(--blue);background:rgba(41,121,255,0.08);color:var(--blue)}
+.mode-icon{font-size:18px;display:block;margin-bottom:3px}
+
+/* ── STOP LIST ── */
+.stop-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.stop-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:10px;padding:10px 12px;
+  animation:pgIn 0.2s ease;
+}
+.stop-num{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+  flex-shrink:0;
+}
+.stop-num.start{background:var(--green);color:var(--ink)}
+.stop-num.end{background:var(--orange);color:#fff}
+.stop-address{flex:1;font-size:13px;font-weight:500;line-height:1.4}
+.stop-pay{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green);font-weight:500}
+.stop-remove{
+  width:24px;height:24px;border-radius:50%;background:rgba(255,23,68,0.08);
+  color:var(--red);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  flex-shrink:0;
+}
+
+/* ── AI OUTPUT ── */
+.ai-out{
+  background:linear-gradient(135deg,rgba(41,121,255,0.04),rgba(124,77,255,0.04));
+  border:1.5px solid rgba(41,121,255,0.2);
+  border-radius:14px;padding:16px;margin-top:12px;display:none;
+  animation:pgIn 0.3s ease;
+}
+.ai-out.show{display:block}
+.ai-head{
+  display:flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;
+  text-transform:uppercase;color:var(--blue);margin-bottom:10px;
+}
+.ai-pulse{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+.ai-body{font-size:13px;line-height:1.8;white-space:pre-wrap;color:var(--ink);font-weight:400}
+
+/* ── LOADING ── */
+.ld{display:inline-flex;gap:3px;align-items:center}
+.ld span{width:4px;height:4px;background:currentColor;border-radius:50%;animation:ldB 1.2s infinite}
+.ld span:nth-child(2){animation-delay:.2s}
+.ld span:nth-child(3){animation-delay:.4s}
+@keyframes ldB{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* ── STAT CHIPS ── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat-chip{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:12px;padding:12px 10px;text-align:center;
+}
+.stat-val{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:900;line-height:1;margin-bottom:4px}
+.stat-val.green{color:var(--green)}
+.stat-val.blue{color:var(--blue)}
+.stat-val.orange{color:var(--orange)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)}
+
+/* ── EARNINGS LOG ── */
+.earn-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--border);
+}
+.earn-item:last-child{border:none}
+.earn-left{}
+.earn-app{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px}
+.earn-desc{font-size:13px;font-weight:500}
+.earn-right{text-align:right}
+.earn-amount{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--green)}
+.earn-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── APP BADGES ── */
+.app-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.app-badge{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;
+  transition:all 0.18s;
+}
+.app-badge.active{border-color:var(--blue);background:rgba(41,121,255,0.06)}
+.app-badge-icon{font-size:22px;margin-bottom:4px}
+.app-badge-name{font-size:10px;font-weight:600;color:var(--muted)}
+.app-badge.active .app-badge-name{color:var(--blue)}
+
+/* ── ROUTE VISUAL ── */
+.route-visual{
+  background:var(--ink);border-radius:14px;padding:16px;
+  margin:12px 0;position:relative;overflow:hidden;
+}
+.route-visual::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    90deg,rgba(41,121,255,0.04) 0,rgba(41,121,255,0.04) 1px,
+    transparent 1px,transparent 40px
+  ),repeating-linear-gradient(
+    0deg,rgba(41,121,255,0.04) 0,rgba(41,121,255,0.04) 1px,
+    transparent 1px,transparent 40px
+  );
+}
+.route-stops{display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
+.route-stop-row{display:flex;align-items:center;gap:12px;padding:8px 0;position:relative}
+.route-stop-row::before{
+  content:'';position:absolute;left:11px;top:24px;bottom:-8px;
+  width:2px;background:rgba(255,255,255,0.1);
+}
+.route-stop-row:last-child::before{display:none}
+.rs-dot{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;
+  flex-shrink:0;border:2px solid transparent;
+}
+.rs-dot.start{background:var(--green);color:var(--ink);border-color:var(--green2)}
+.rs-dot.stop{background:rgba(41,121,255,0.2);color:var(--blue2);border-color:rgba(41,121,255,0.4)}
+.rs-dot.end{background:rgba(255,109,0,0.2);color:var(--orange);border-color:rgba(255,109,0,0.4)}
+.rs-info{flex:1}
+.rs-name{font-size:12px;font-weight:600;color:#fff;line-height:1.3}
+.rs-detail{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px}
+.rs-pay{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)}
+
+/* ── WORTH IT METER ── */
+.worth-meter{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:12px;padding:14px;margin:10px 0;
+}
+.worth-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.worth-bar-bg{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:6px}
+.worth-bar-fill{height:100%;border-radius:5px;transition:width 1s ease}
+.worth-verdict{font-size:13px;font-weight:600}
+
+/* ── TAGS ── */
+.tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:3px 8px;border-radius:6px;margin:2px}
+.tag-blue{background:rgba(41,121,255,0.1);color:var(--blue);border:1px solid rgba(41,121,255,0.2)}
+.tag-green{background:rgba(0,200,83,0.1);color:var(--green);border:1px solid rgba(0,200,83,0.2)}
+.tag-orange{background:rgba(255,109,0,0.1);color:var(--orange);border:1px solid rgba(255,109,0,0.2)}
+
+/* ── SECTION LABEL ── */
+.sec-label{
+  font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:0.03em;color:var(--muted);text-transform:uppercase;
+  margin:16px 0 8px;
+}
+
+/* ── CALLOUT ── */
+.callout{border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.6;margin:8px 0}
+.callout-green{background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.2)}
+.callout-blue{background:rgba(41,121,255,0.06);border:1px solid rgba(41,121,255,0.15)}
+.callout-orange{background:rgba(255,109,0,0.08);border:1px solid rgba(255,109,0,0.2)}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">R</div>
+    <div class="brand-name">Route<span>IQ</span></div>
+  </div>
+  <div class="earn-chip" id="topEarnings">Today: $0.00</div>
+</div>
+
+<!-- PAGES -->
+
+<!-- ── PLAN PAGE ── -->
+<div class="page active" id="page-plan">
+
+  <div class="card">
+    <div class="card-title">How are you moving today?</div>
+    <div class="card-sub">RouteIQ optimizes for your actual transport method</div>
+    <div class="mode-row">
+      <div class="mode-pill active" onclick="setMode('walk',this)" id="mode-walk">
+        <span class="mode-icon">🚶</span>Walking
+      </div>
+      <div class="mode-pill" onclick="setMode('transit',this)" id="mode-transit">
+        <span class="mode-icon">🚇</span>Transit
+      </div>
+      <div class="mode-pill" onclick="setMode('bike',this)" id="mode-bike">
+        <span class="mode-icon">🚴</span>Bike
+      </div>
+      <div class="mode-pill" onclick="setMode('drive',this)" id="mode-drive">
+        <span class="mode-icon">🚗</span>Drive
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">What Type of Gig?</div>
+    <div class="card-sub">Select your work type today</div>
+    <div class="app-grid">
+      <div class="app-badge active" onclick="setApp('Field Visit',this)">
+        <div class="app-badge-icon">📍</div>
+        <div class="app-badge-name">Field Visit</div>
+      </div>
+      <div class="app-badge" onclick="setApp('Store Audit',this)">
+        <div class="app-badge-icon">🏪</div>
+        <div class="app-badge-name">Store Audit</div>
+      </div>
+      <div class="app-badge" onclick="setApp('Food Delivery',this)">
+        <div class="app-badge-icon">🍔</div>
+        <div class="app-badge-name">Food Delivery</div>
+      </div>
+      <div class="app-badge" onclick="setApp('Grocery',this)">
+        <div class="app-badge-icon">🛒</div>
+        <div class="app-badge-name">Grocery</div>
+      </div>
+      <div class="app-badge" onclick="setApp('Package',this)">
+        <div class="app-badge-icon">📦</div>
+        <div class="app-badge-name">Package</div>
+      </div>
+      <div class="app-badge" onclick="setApp('Other Gig',this)">
+        <div class="app-badge-icon">⚡</div>
+        <div class="app-badge-name">Other Gig</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Add Your Stops</div>
+    <div class="card-sub">Enter each job address + what it pays</div>
+
+    <div class="stop-list" id="stopList"></div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="fg" style="margin:0">
+        <label class="fl">Address or Intersection</label>
+        <input class="fi" id="stopAddr" placeholder="e.g. 42nd & 5th Ave, NYC">
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Pay ($)</label>
+        <input class="fi" id="stopPay" type="number" placeholder="3.50" step="0.25">
+      </div>
+    </div>
+    <button class="btn btn-outline btn-full" onclick="addStop()" style="margin-bottom:10px">
+      + Add Stop
+    </button>
+
+    <div class="fg">
+      <label class="fl">Starting From</label>
+      <input class="fi" id="startAddr" placeholder="Your current location or address">
+    </div>
+
+    <button class="btn btn-primary btn-full" id="optimizeBtn" onclick="optimizeRoute()">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      Optimize My Route
+    </button>
+
+    <div class="ai-out" id="routeResult">
+      <div class="ai-head"><div class="ai-pulse"></div>RouteIQ Optimized Plan</div>
+      <div id="routeVisual"></div>
+      <div class="ai-body" id="routeText"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WORTH IT PAGE ── -->
+<div class="page" id="page-worth">
+  <div class="card">
+    <div class="card-title">Is This Job Worth It?</div>
+    <div class="card-sub">Enter the job details — AI tells you if you should take it</div>
+
+    <div class="fg">
+      <label class="fl">Job Pay</label>
+      <input class="fi" id="wi-pay" type="number" placeholder="e.g. 4.50" step="0.25">
+    </div>
+    <div class="fg">
+      <label class="fl">Distance to Job</label>
+      <input class="fi" id="wi-dist" placeholder="e.g. 0.8 miles, 3 subway stops, 12 min walk">
+    </div>
+    <div class="fg">
+      <label class="fl">Estimated Time to Complete</label>
+      <input class="fi" id="wi-time" placeholder="e.g. 15 minutes, 30 min with travel">
+    </div>
+    <div class="fg">
+      <label class="fl">Transport Method</label>
+      <select class="fs" id="wi-mode">
+        <option>Walking</option>
+        <option>Subway / Bus</option>
+        <option>Bike</option>
+        <option>Driving</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">Any other jobs nearby? (optional)</label>
+      <input class="fi" id="wi-nearby" placeholder="e.g. 2 more IVueit jobs within 3 blocks">
+    </div>
+
+    <button class="btn btn-primary btn-full" id="worthBtn" onclick="checkWorth()">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Analyze This Job
+    </button>
+
+    <div class="ai-out" id="worthResult">
+      <div class="ai-head"><div class="ai-pulse"></div>Worth-It Analysis</div>
+      <div id="worthMeter"></div>
+      <div class="ai-body" id="worthText"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Hourly Rate Calculator</div>
+    <div class="card-sub">Know your real earnings per hour</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="fg" style="margin:0">
+        <label class="fl">Total Earned ($)</label>
+        <input class="fi" id="calc-earn" type="number" placeholder="0.00" oninput="calcHourly()">
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Hours Worked</label>
+        <input class="fi" id="calc-hours" type="number" placeholder="0" step="0.5" oninput="calcHourly()">
+      </div>
+    </div>
+    <div id="calcResult" style="display:none;margin-top:12px">
+      <div class="stat-row">
+        <div class="stat-chip">
+          <div class="stat-val green" id="calcHourly">—</div>
+          <div class="stat-label">Per Hour</div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-val blue" id="calcDay">—</div>
+          <div class="stat-label">8hr Day</div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-val orange" id="calcWeek">—</div>
+          <div class="stat-label">5-Day Week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── EARNINGS PAGE ── */
+<div class="page" id="page-earn">
+  <div class="stat-row">
+    <div class="stat-chip">
+      <div class="stat-val green" id="todayTotal">$0</div>
+      <div class="stat-label">Today</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-val blue" id="weekTotal">$0</div>
+      <div class="stat-label">This Week</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-val orange" id="jobCount">0</div>
+      <div class="stat-label">Jobs Done</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Log a Completed Job</div>
+    <div class="card-sub">Track every dollar you earn</div>
+    <div class="fg">
+      <label class="fl">App / Platform</label>
+      <select class="fs" id="log-app">
+        <option>Field Visit</option>
+        <option>Store Audit</option>
+        <option>Food Delivery</option>
+        <option>Grocery Delivery</option>
+        <option>Package Delivery</option>
+        <option>Other Gig</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+      <div class="fg" style="margin:0">
+        <label class="fl">Job Description</label>
+        <input class="fi" id="log-desc" placeholder="e.g. Store visit at CVS 5th Ave">
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">Amount ($)</label>
+        <input class="fi" id="log-amount" type="number" placeholder="0.00" step="0.25">
+      </div>
+    </div>
+    <button class="btn btn-green btn-full" onclick="logJob()" style="margin-top:4px">+ Log Job</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Earnings History</div>
+    <div class="card-sub">Today's completed jobs</div>
+    <div id="earnLog">
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">
+        No jobs logged yet today.<br>Complete a job and log it above!
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">AI Earnings Coach</div>
+    <div class="card-sub">Get personalized tips to make more today</div>
+    <div class="fg">
+      <label class="fl">Tell me about your day so far</label>
+      <input class="fi" id="coach-input" placeholder="e.g. Did 4 IVueit jobs in 2 hours, made $18, walking in Manhattan...">
+    </div>
+    <button class="btn btn-primary btn-full" id="coachBtn" onclick="getCoaching()">Get Coaching Tips</button>
+    <div class="ai-out" id="coachResult">
+      <div class="ai-head"><div class="ai-pulse"></div>Earnings Coach</div>
+      <div class="ai-body" id="coachText"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI TIPS PAGE ── -->
+<div class="page" id="page-tips">
+  <div class="card">
+    <div class="card-title">Ask RouteIQ Anything</div>
+    <div class="card-sub">Strategy, tips, best areas, best times — ask it all</div>
+    <div class="fg">
+      <input class="fi" id="tips-input" placeholder="e.g. Best areas in NYC for IVueit jobs? What time should I start? How do I stack apps?" onkeydown="if(event.key==='Enter')askTips()">
+    </div>
+    <button class="btn btn-primary btn-full" id="tipsBtn" onclick="askTips()">Ask RouteIQ</button>
+    <div class="ai-out" id="tipsResult">
+      <div class="ai-head"><div class="ai-pulse"></div>RouteIQ Strategy</div>
+      <div class="ai-body" id="tipsText"></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Quick Questions</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-outline btn-full" style="justify-content:flex-start;text-align:left;font-size:13px" onclick="quickAsk('Best neighborhoods for field visit and store audit gig jobs in a major city and what times are most jobs available?')">📍 Best areas + times for field visits</button>
+    <button class="btn btn-outline btn-full" style="justify-content:flex-start;text-align:left;font-size:13px" onclick="quickAsk('How do I stack multiple gig apps to maximize earnings in a single day walking or on transit?')">💰 How to stack multiple gigs</button>
+    <button class="btn btn-outline btn-full" style="justify-content:flex-start;text-align:left;font-size:13px" onclick="quickAsk('What is the minimum pay per job I should accept for walking jobs vs transit jobs vs driving jobs to make at least $20/hour?')">⚡ Minimum pay to accept per job</button>
+    <button class="btn btn-outline btn-full" style="justify-content:flex-start;text-align:left;font-size:13px" onclick="quickAsk('Tips for doing store visit and field audit gig jobs efficiently — what makes a good submission and how to get approved fast?')">✅ Field visit submission tips</button>
+    <button class="btn btn-outline btn-full" style="justify-content:flex-start;text-align:left;font-size:13px" onclick="quickAsk('How should I plan my route when I have gig jobs scattered across a city on foot or transit to minimize time between stops?')">🗺️ Route planning strategy</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="showPage('plan',this)">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+    Route
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="showPage('worth',this)">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Worth It?
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="showPage('earn',this)">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Earnings
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="showPage('tips',this)">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+    AI Tips
+    <div class="nav-dot"></div>
+  </button>
+</div>
+
+<script>
+// ── STATE ──
+let stops=[], mode='walk', app='ivueit';
+let jobs=[], todayEarnings=0, weekEarnings=0;
+
+// ── NAV ──
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+function setMode(m,el){
+  mode=m;
+  document.querySelectorAll('.mode-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setApp(a,el){
+  app=a;
+  document.querySelectorAll('.app-badge').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── STOPS ──
+function addStop(){
+  const addr=document.getElementById('stopAddr').value.trim();
+  const pay=document.getElementById('stopPay').value;
+  if(!addr){alert('Enter an address.');return}
+  stops.push({addr,pay:pay||'0',id:Date.now()});
+  document.getElementById('stopAddr').value='';
+  document.getElementById('stopPay').value='';
+  renderStops();
+}
+
+function removeStop(id){
+  stops=stops.filter(s=>s.id!==id);
+  renderStops();
+}
+
+function renderStops(){
+  const list=document.getElementById('stopList');
+  if(stops.length===0){list.innerHTML='';return}
+  list.innerHTML=stops.map((s,i)=>`
+    <div class="stop-item">
+      <div class="stop-num">${i+1}</div>
+      <div class="stop-address">${s.addr}</div>
+      ${s.pay>0?`<div class="stop-pay">$${parseFloat(s.pay).toFixed(2)}</div>`:''}
+      <button class="stop-remove" onclick="removeStop(${s.id})">×</button>
+    </div>
+  `).join('');
+}
+
+// ── CLAUDE API ──
+async function callClaude(sys,msg){
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system:sys,
+      messages:[{role:'user',content:msg}]
+    })
+  });
+  const d=await r.json();
+  return d.content.map(b=>b.text||'').join('');
+}
+
+function setLoading(btnId,loading){
+  const b=document.getElementById(btnId);if(!b)return;
+  b.disabled=loading;
+  b.innerHTML=loading?`<span class="ld"><span></span><span></span><span></span></span> Thinking...`:b.getAttribute('data-label')||b.innerHTML;
+}
+
+// ── ROUTE OPTIMIZER ──
+async function optimizeRoute(){
+  if(stops.length<2){alert('Add at least 2 stops to optimize a route.');return}
+  const start=document.getElementById('startAddr').value||'my current location';
+  const modeLabel={'walk':'walking','transit':'subway/bus transit','bike':'biking','drive':'driving'}[mode]||mode;
+  const appLabel=app;
+  const totalPay=stops.reduce((sum,s)=>sum+parseFloat(s.pay||0),0);
+
+  document.getElementById('optimizeBtn').disabled=true;
+  document.getElementById('optimizeBtn').innerHTML='<span class="ld"><span></span><span></span><span></span></span> Optimizing...';
+  document.getElementById('routeResult').classList.remove('show');
+
+  const sys=`You are RouteIQ, an AI route optimizer for gig workers. You specialize in urban routing for people on foot, transit, bikes, and cars. You know how to minimize travel time, avoid backtracking, and maximize earnings per hour. Give specific, practical advice. Format your response as:
+
+OPTIMIZED ORDER: (number each stop with the address)
+ESTIMATED TOTAL TIME: (realistic for the transport mode)
+ESTIMATED TOTAL EARNINGS: $X
+YOUR EFFECTIVE HOURLY RATE: ~$X/hr
+PRO TIPS: (2-3 specific tips for this route and transport mode)
+
+Be specific about transit (which train/bus lines), walking (which direction), or driving (major roads to use/avoid).`;
+
+  const msg=`App: ${appLabel} | Transport: ${modeLabel} | Starting from: ${start}
+Total potential earnings: $${totalPay.toFixed(2)}
+Stops to optimize:
+${stops.map((s,i)=>`${i+1}. ${s.addr} — Pay: $${parseFloat(s.pay||0).toFixed(2)}`).join('\n')}
+
+Optimize the order of these stops to minimize total travel time and maximize earnings efficiency.`;
+
+  try{
+    const result=await callClaude(sys,msg);
+    // render visual route
+    const visual=document.getElementById('routeVisual');
+    visual.innerHTML=`<div class="route-visual"><div class="route-stops">
+      <div class="route-stop-row">
+        <div class="rs-dot start">S</div>
+        <div class="rs-info"><div class="rs-name">${start}</div><div class="rs-detail">Starting point</div></div>
+      </div>
+      ${stops.map((s,i)=>`
+        <div class="route-stop-row">
+          <div class="rs-dot stop">${i+1}</div>
+          <div class="rs-info"><div class="rs-name">${s.addr}</div><div class="rs-detail">${appLabel} job</div></div>
+          <div class="rs-pay">$${parseFloat(s.pay||0).toFixed(2)}</div>
+        </div>
+      `).join('')}
+    </div></div>`;
+    document.getElementById('routeText').textContent=result;
+    document.getElementById('routeResult').classList.add('show');
+  }catch(e){
+    document.getElementById('routeText').textContent='Connection error. Please try again.';
+    document.getElementById('routeResult').classList.add('show');
+  }
+  document.getElementById('optimizeBtn').disabled=false;
+  document.getElementById('optimizeBtn').innerHTML='<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Optimize My Route';
+}
+
+// ── WORTH IT CHECK ──
+async function checkWorth(){
+  const pay=document.getElementById('wi-pay').value;
+  const dist=document.getElementById('wi-dist').value;
+  const time=document.getElementById('wi-time').value;
+  const wiMode=document.getElementById('wi-mode').value;
+  const nearby=document.getElementById('wi-nearby').value;
+  if(!pay||!dist){alert('Enter the pay and distance at minimum.');return}
+
+  document.getElementById('worthBtn').disabled=true;
+  document.getElementById('worthBtn').innerHTML='<span class="ld"><span></span><span></span><span></span></span> Analyzing...';
+  document.getElementById('worthResult').classList.remove('show');
+
+  const sys=`You are RouteIQ, a gig worker earnings optimizer. Analyze whether a job is worth taking based on pay, distance, time, and transport costs. Be direct and practical. Format response as:
+
+VERDICT: TAKE IT ✅ / SKIP IT ❌ / ONLY IF... ⚠️
+EFFECTIVE HOURLY RATE: ~$X/hr
+REASONING: (2-3 sentences explaining the math)
+NEGOTIATION TIP: (if worth trying to get more)
+BETTER ALTERNATIVE: (what they should look for instead if skipping)`;
+
+  const msg=`Job pay: $${pay}
+Distance to job: ${dist}
+Time to complete (including travel): ${time||'unknown'}
+Transport method: ${wiMode}
+Nearby jobs: ${nearby||'none mentioned'}
+
+Is this job worth taking? Calculate the effective hourly rate and give a clear recommendation.`;
+
+  try{
+    const result=await callClaude(sys,msg);
+    const isGood=result.includes('TAKE IT')||result.includes('✅');
+    const isWarn=result.includes('ONLY IF')||result.includes('⚠️');
+    const pct=isGood?82:isWarn?45:20;
+    const color=isGood?'var(--green)':isWarn?'var(--yellow)':'var(--red)';
+    document.getElementById('worthMeter').innerHTML=`
+      <div class="worth-meter">
+        <div class="worth-label">Worth-It Score</div>
+        <div class="worth-bar-bg"><div class="worth-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="worth-verdict" style="color:${color}">${isGood?'✅ Take It':isWarn?'⚠️ Maybe':'❌ Skip It'}</div>
+      </div>`;
+    document.getElementById('worthText').textContent=result;
+    document.getElementById('worthResult').classList.add('show');
+  }catch(e){
+    document.getElementById('worthText').textContent='Error. Please try again.';
+    document.getElementById('worthResult').classList.add('show');
+  }
+  document.getElementById('worthBtn').disabled=false;
+  document.getElementById('worthBtn').innerHTML='<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Analyze This Job';
+}
+
+// ── HOURLY CALC ──
+function calcHourly(){
+  const earn=parseFloat(document.getElementById('calc-earn').value)||0;
+  const hours=parseFloat(document.getElementById('calc-hours').value)||0;
+  if(earn>0&&hours>0){
+    const hourly=earn/hours;
+    document.getElementById('calcHourly').textContent='$'+hourly.toFixed(2);
+    document.getElementById('calcDay').textContent='$'+(hourly*8).toFixed(0);
+    document.getElementById('calcWeek').textContent='$'+(hourly*8*5).toFixed(0);
+    document.getElementById('calcResult').style.display='block';
+  }
+}
+
+// ── LOG JOB ──
+function logJob(){
+  const app=document.getElementById('log-app').value;
+  const desc=document.getElementById('log-desc').value||'Job completed';
+  const amount=parseFloat(document.getElementById('log-amount').value)||0;
+  if(amount<=0){alert('Enter the amount earned.');return}
+  const job={app,desc,amount,time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})};
+  jobs.unshift(job);
+  todayEarnings+=amount;
+  weekEarnings+=amount;
+  document.getElementById('log-desc').value='';
+  document.getElementById('log-amount').value='';
+  renderEarnings();
+  document.getElementById('topEarnings').textContent=`Today: $${todayEarnings.toFixed(2)}`;
+}
+
+function renderEarnings(){
+  document.getElementById('todayTotal').textContent='$'+todayEarnings.toFixed(2);
+  document.getElementById('weekTotal').textContent='$'+weekEarnings.toFixed(2);
+  document.getElementById('jobCount').textContent=jobs.length;
+  const log=document.getElementById('earnLog');
+  if(jobs.length===0){log.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No jobs logged yet today.</div>';return}
+  log.innerHTML=jobs.map(j=>`
+    <div class="earn-item">
+      <div class="earn-left">
+        <div class="earn-app">${j.app}</div>
+        <div class="earn-desc">${j.desc}</div>
+      </div>
+      <div class="earn-right">
+        <div class="earn-amount">$${j.amount.toFixed(2)}</div>
+        <div class="earn-time">${j.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── EARNINGS COACH ──
+async function getCoaching(){
+  const input=document.getElementById('coach-input').value.trim();
+  if(!input){alert('Tell me about your day first.');return}
+  document.getElementById('coachBtn').disabled=true;
+  document.getElementById('coachBtn').innerHTML='<span class="ld"><span></span><span></span><span></span></span> Coaching...';
+  document.getElementById('coachResult').classList.remove('show');
+  const sys=`You are RouteIQ earnings coach for gig workers doing field visits (IVueit, Blocks, Premise) and delivery (DoorDash, Instacart). You know the streets, you know how to maximize earnings per hour. Give 3 specific, actionable tips based on what the worker shares. Focus on: areas to target, time management, app stacking, and pay thresholds. Keep it practical and direct.`;
+  try{
+    const r=await callClaude(sys,[`Current situation: ${input}\nTotal logged today: $${todayEarnings.toFixed(2)} across ${jobs.length} jobs.\nTransport mode: ${mode}`].map(m=>({role:'user',content:m}))[0].content);
+    document.getElementById('coachText').textContent=r;
+    document.getElementById('coachResult').classList.add('show');
+  }catch(e){document.getElementById('coachText').textContent='Error. Try again.';document.getElementById('coachResult').classList.add('show')}
+  document.getElementById('coachBtn').disabled=false;
+  document.getElementById('coachBtn').innerHTML='Get Coaching Tips';
+}
+
+// ── AI TIPS ──
+async function askTips(){
+  const input=document.getElementById('tips-input').value.trim();
+  if(!input){alert('Ask a question first.');return}
+  await runTips(input);
+}
+async function quickAsk(q){
+  document.getElementById('tips-input').value=q;
+  await runTips(q);
+  showPage('tips',document.querySelectorAll('.nav-btn')[3]);
+}
+async function runTips(q){
+  document.getElementById('tipsBtn').disabled=true;
+  document.getElementById('tipsBtn').innerHTML='<span class="ld"><span></span><span></span><span></span></span> Thinking...';
+  document.getElementById('tipsResult').classList.remove('show');
+  const sys=`You are RouteIQ, the ultimate strategy guide for urban gig workers doing field visit apps (IVueit, Blocks, Premise Data) and delivery gigs (DoorDash, Instacart). You have deep knowledge of how these platforms work, the best areas in major US cities, optimal times, how to stack apps, minimum pay thresholds, and how to maximize earnings per hour whether walking, on transit, biking, or driving. Give specific, honest, actionable answers. Never be vague.`;
+  try{
+    const r=await callClaude(sys,q);
+    document.getElementById('tipsText').textContent=r;
+    document.getElementById('tipsResult').classList.add('show');
+  }catch(e){document.getElementById('tipsText').textContent='Error. Try again.';document.getElementById('tipsResult').classList.add('show')}
+  document.getElementById('tipsBtn').disabled=false;
+  document.getElementById('tipsBtn').innerHTML='Ask RouteIQ';
+}
+
+// init
+renderEarnings();
+</script>
+</body>
+</html>
